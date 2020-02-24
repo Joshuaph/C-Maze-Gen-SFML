@@ -21,13 +21,11 @@ namespace MazeGen
 		//private
 		private int _numberCells;
 		private readonly int _imageSize;
-		private int TotalVisited = 0;
 		private readonly CellDto _cellData;
 		private RenderWindow _mazeWindow;
 		private int NumberColumns => _imageSize / _cellData.Size;
-		private int NumberRows => _imageSize / _cellData.Size;
+		private int NumberRows => NumberColumns;
 		private readonly List<Cell> _grid = new List<Cell>();
-		private List<Cell> _stack; //wtf is this
 		private bool _redo;
 
 
@@ -44,7 +42,7 @@ namespace MazeGen
 		/// <param name="borderSize">Size of the border of each cell</param>
 		public Maze(int numberCells, int imageSize, int borderSize)
 		{
-			_numberCells = numberCells;
+			_numberCells = (int) Math.Pow(numberCells, 2);
 			_imageSize = imageSize;
 			_cellData = new CellDto(imageSize / numberCells, borderSize);
 			Init();
@@ -71,7 +69,7 @@ namespace MazeGen
 				for (var y = 0; y < NumberRows; y++)
 				for (var x = 0; x < NumberColumns; x++)
 					_grid.Add(new Cell(x, y, _cellData));
-				_redo = DisplayMaze();
+				_redo = DisplayGrid();
 			} while (_redo);
 		}
 
@@ -79,8 +77,6 @@ namespace MazeGen
 		private void DumbMazeCrap()
 		{
 			var neighbors = new List<Cell>();
-			
-			
 		}
 
 		/// <summary>
@@ -88,10 +84,8 @@ namespace MazeGen
 		/// 	Handles some event handling, and the main window
 		/// </summary>
 		/// <returns>a bool letting the program know if it should redo the whole grid</returns>
-		private bool DisplayMaze()
+		private bool DisplayGrid()
 		{
-			var current = _grid[0];
-
 			//events
 			_mazeWindow.Closed += (s, e) => (s as Window)?.Close();
 			_mazeWindow.KeyPressed += HandleKeys;
@@ -104,6 +98,11 @@ namespace MazeGen
 				//render each cell
 				foreach (var c in _grid)
 					c.RenderCell(_mazeWindow);
+
+				//random start point
+				var rand = new Random();
+				RecursiveBacktracer(_grid[rand.Next(_numberCells)]);
+
 				_mazeWindow.Display();
 			}
 
@@ -139,17 +138,6 @@ namespace MazeGen
 			}
 		}
 
-		/// <summary>
-		/// 
-		/// </summary>
-		/// <param name="x"></param>
-		/// <param name="y"></param>
-		/// <returns></returns>
-		private int Index(int x, int y)
-		{
-			return 1;
-		}
-
 		private void Init()
 		{
 			//Initialize Window 
@@ -158,9 +146,31 @@ namespace MazeGen
 		}
 
 
-		private void GetCellIndex(int x, int y)
+		private void RecursiveBacktracer(Cell currentCell)
 		{
+			var rand = new Random();
+			var neighbors = new Dictionary<string, Cell>();
 			
+			neighbors.Clear();
+			neighbors = GetNeighbors(currentCell);
+			var nextCell = _grid[rand.Next(neighbors.Count)];
+		}
+
+		private Dictionary<string, Cell> GetNeighbors(Cell cell)
+		{
+			var neighbors = new Dictionary<string, Cell>();
+
+			if (cell.ColumnNumber != 0)
+				neighbors.Add("Left", _grid[cell.ColumnNumber - 1]);
+			if (cell.ColumnNumber != NumberColumns)
+				neighbors.Add("Right", _grid[cell.ColumnNumber + 1]);
+			if (cell.RowNumber != 0)
+				neighbors.Add("Up", _grid[cell.ColumnNumber - NumberColumns]);
+			if (cell.RowNumber != NumberRows)
+				neighbors.Add("Down", _grid[cell.ColumnNumber + NumberColumns]);
+
+
+			return neighbors;
 		}
 	}
 }
