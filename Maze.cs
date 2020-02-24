@@ -4,118 +4,138 @@ using System.Drawing;
 using System.Windows.Markup;
 using SFML.Graphics;
 using SFML.Window;
+using Color = SFML.Graphics.Color;
 
 namespace MazeGen
 {
 	public class Maze
 	{
-		public int NumberCells { get; set; }
-		public int ImageSize { get; set; }
-		public int TotalVisited { get; set; } = 0;
-		public int CellSize => ImageSize / NumberCells;
-		public RenderWindow MazeWindow;
-		private int NumberColumns => ImageSize / CellSize;
-		private int NumberRows => ImageSize / CellSize;
-		private List<Cell> _grid;
+/*
+		 *  ----------------------------- VARIABLES ---------------------------
+		 */
+
+		//public
+		public Color WindowColor { get; set; }
+
+
+		//private
+		private int _numberCells;
+		private readonly int _imageSize;
+		private int TotalVisited = 0;
+		private readonly CellDto _cellData;
+		private RenderWindow _mazeWindow;
+		private int NumberColumns => _imageSize / _cellData.Size;
+		private int NumberRows => _imageSize / _cellData.Size;
+		private readonly List<Cell> _grid = new List<Cell>();
 		private List<Cell> _stack; //wtf is this
-		private bool _redo = false;
+		private bool _redo;
+
+
+		/*
+		 *  ----------------------------- CONSTRUCTOR ---------------------------
+		 */
 
 
 		/// <summary>
-		/// 
+		/// Initializes Maze
 		/// </summary>
-		/// <param name="numberCells"></param>
-		/// <param name="imageSize"></param>
-		public Maze(int numberCells, int imageSize)
+		/// <param name="numberCells">X*X size grid where x = numberCells</param>
+		/// <param name="imageSize">Length of sides for the squared window</param>
+		/// <param name="borderSize">Size of the border of each cell</param>
+		public Maze(int numberCells, int imageSize, int borderSize)
 		{
-			NumberCells = numberCells;
-			ImageSize = imageSize;
-
-			InitWindow();
-			CreateMaze();
+			_numberCells = numberCells;
+			_imageSize = imageSize;
+			_cellData = new CellDto(imageSize / numberCells, borderSize);
+			Init();
 		}
 
-		//Methods
+
+		/*
+		 *  ----------------------------- METHODS ---------------------------
+		 */
+
 
 		/// <summary>
-		///     I think this does all the stuff 
+		/// Main Run functions of this class.
+		/// 	Sets up the grid list and calls the display function
 		/// </summary>
-		private void CreateMaze()
+		public void Run()
 		{
 			do
 			{
 				_redo = false;
 				_grid.Clear();
 
+				//sets up the grid(list) of cells Number Cells / Number Cells grid
 				for (var y = 0; y < NumberRows; y++)
 				for (var x = 0; x < NumberColumns; x++)
-					_grid.Add(new Cell(x, y, CellSize));
-
+					_grid.Add(new Cell(x, y, _cellData));
 				_redo = DisplayMaze();
 			} while (_redo);
 		}
 
-		/// <summary>
-		///  this should PROBABLY be in the CELL class but idk its 2 AM
-		/// </summary>
-		/// <param name="cell"></param>
-		/// <returns></returns>
-		private Cell CheckNeighbors(Cell cell)
-		{
-			//TODO:cry
 
-			return new Cell();
+		private void DumbMazeCrap()
+		{
+			var neighbors = new List<Cell>();
+			
+			
 		}
 
 		/// <summary>
-		///     Main 'game loop' of the Maze class
+		/// Main 'game loop' of the Maze class
+		/// 	Handles some event handling, and the main window
 		/// </summary>
-		/// <returns></returns>
-		public bool DisplayMaze()
+		/// <returns>a bool letting the program know if it should redo the whole grid</returns>
+		private bool DisplayMaze()
 		{
 			var current = _grid[0];
 
-			while (MazeWindow.IsOpen)
-			{
-				MazeWindow.Clear(new SFML.Graphics.Color(69, 69, 69));
-				Cell next;
-				current.Current = true;
+			//events
+			_mazeWindow.Closed += (s, e) => (s as Window)?.Close();
+			_mazeWindow.KeyPressed += HandleKeys;
 
-				//events
-				MazeWindow.Closed += HandleWindowEvents(EventType.Closed);
-				MazeWindow.KeyPressed += HandleWindowEvents(EventType.KeyPressed);
+			while (_mazeWindow.IsOpen)
+			{
+				_mazeWindow.Clear(WindowColor);
+				_mazeWindow.DispatchEvents();
+
+				//render each cell
+				foreach (var c in _grid)
+					c.RenderCell(_mazeWindow);
+				_mazeWindow.Display();
 			}
 
 			return false;
 		}
 
-		private EventHandler HandleWindowEvents(EventType e)
+		/// <summary>
+		/// 
+		/// </summary>
+		/// <param name="sender"></param>
+		/// <param name="e"></param>
+		/// <exception cref="ArgumentOutOfRangeException"></exception>
+		private void HandleKeys(object? sender, KeyEventArgs e)
 		{
-			switch (e)
+			try
 			{
-				case EventType.Closed:
-					return (sender, ev) => { ((Window) sender).Close(); };
-				case EventType.KeyPressed:
-					return (sender, ev) => { HandleKeys((KeyEventArgs) ev); };
-
-				default:
-					throw new ArgumentOutOfRangeException();
+				switch (e.Code)
+				{
+					case Keyboard.Key.Escape:
+						_redo = false;
+						_mazeWindow.Close();
+						break;
+					case Keyboard.Key.Enter:
+						_redo = true;
+						break;
+					default:
+						throw new ArgumentOutOfRangeException();
+				}
 			}
-
-			return null;
-		}
-
-		private void HandleKeys(KeyEventArgs e)
-		{
-			switch (e.Code)
+			catch (ArgumentOutOfRangeException ex)
 			{
-				case Keyboard.Key.Escape:
-					_redo = false;
-					MazeWindow.Close();
-					break;
-				case Keyboard.Key.Enter:
-					_redo = true;
-					break;
+				Console.WriteLine($"Key {ex} not supported.");
 			}
 		}
 
@@ -130,11 +150,17 @@ namespace MazeGen
 			return 1;
 		}
 
-		private void InitWindow()
+		private void Init()
 		{
 			//Initialize Window 
-			MazeWindow = new RenderWindow(new VideoMode((uint) ImageSize, (uint) ImageSize), "Maze",
+			_mazeWindow = new RenderWindow(new VideoMode((uint) _imageSize, (uint) _imageSize), "Maze",
 				Styles.Titlebar | Styles.Close);
+		}
+
+
+		private void GetCellIndex(int x, int y)
+		{
+			
 		}
 	}
 }
