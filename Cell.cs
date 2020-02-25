@@ -27,6 +27,7 @@ namespace MazeGen
 		private readonly Color _linesColor = Color.White;
 		private readonly Color _visitedColor = Color.Magenta;
 		private readonly Color _currentColor = Color.Green;
+		private readonly Color _baseColor = new Color(69,69,69);
 		private readonly int _lineWidth = 2;
 
 		//vars
@@ -86,7 +87,7 @@ namespace MazeGen
 			//create cell shape
 			_cellShape = new RectangleShape(new Vector2f(Size, Size))
 			{
-				FillColor = _visitedColor,
+				FillColor = _baseColor,
 				Position = Position
 			};
 
@@ -110,11 +111,12 @@ namespace MazeGen
 		public void RenderCell(RenderWindow window)
 		{
 			//change color
-			/*if (Current || Visited && Current)
+			if (Current)
 			    _cellShape.FillColor = _currentColor;
-			else if (Visited)
-			    _cellShape.FillColor = _visitedColor;*/
-
+			else
+				_cellShape.FillColor = _baseColor;
+			
+			window.Draw(_cellShape);
 			//display walls
 			foreach (var obj in _borderDict.Where(line => line.Value.IsVisible))
 				window.Draw(obj.Value.RecWall);
@@ -148,21 +150,36 @@ namespace MazeGen
 			foreach (var val in x)
 				switch (val)
 				{
-					case 1:
+					case 0:
 						decodedList.Add("topSide");
 						break;
-					case 2:
+					case 1:
 						decodedList.Add("rightSide");
 						break;
-					case 3:
+					case 2:
 						decodedList.Add("bottomSide");
 						break;
-					case 4:
+					case 3:
 						decodedList.Add("leftSide");
 						break;
 				}
 
 			return decodedList;
+		}
+
+		public void RemoveOpposite(int wall)
+		{
+			switch (wall)
+			{
+				case 0: RemoveWalls(2);
+					break;
+				case 1:RemoveWalls(3);
+					break;
+				case 2:RemoveWalls(0);
+					break;
+				case 3: RemoveWalls(1);
+					break;
+			}
 		}
 	}
 }
