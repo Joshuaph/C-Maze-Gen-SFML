@@ -7,134 +7,122 @@ using SFML.System;
 
 namespace MazeGen
 {
-	public class Wall
-	{
-		public bool IsVisible { get; set; }
-		public RectangleShape RecWall { get; set; }
-
-
-		public Wall(Vector2f size, Vector2f position, Color cor)
-		{
-			IsVisible = true;
-			RecWall = new RectangleShape(size) {FillColor = cor, Position = position};
-		}
-	}
-
-
 	public class Cell
 	{
-		//colors
+		/*
+		 *  ----------------------------- Variables ---------------------------
+		 */
+
+		//private
+		private readonly Dictionary<string, Wall> _borderDict = new Dictionary<string, Wall>();
 		private readonly Color _linesColor = Color.White;
-		private readonly Color _visitedColor = Color.Magenta;
 		private readonly Color _currentColor = Color.Green;
-		private readonly Color _baseColor = new Color(69,69,69);
-		private readonly int _lineWidth = 2;
+		private readonly Color _baseColor;
+		private readonly int _lineWidth;
+		private RectangleShape _cellShape;
+		private Vector2f _position;
 
-		//vars
-		public Vector2f Position;
-		public int RowNumber { get; set; }
-		public int ColumnNumber { get; set; }
-		public int Size { get; set; }
-
+		//public
+		public int RowNumber { get; }
+		public int ColumnNumber { get; }
+		private int Size { get; }
 		public bool Visited { get; set; }
 		public bool Current { get; set; }
+		/*
+		 *  ----------------------------- Constructor ---------------------------
+		 */
 
-		private readonly Dictionary<string, Wall> _borderDict = new Dictionary<string, Wall>();
-		private RectangleShape _cellShape;
-
-		//constructors
-		public Cell()
-		{
-			ColumnNumber = 0;
-			RowNumber = 0;
-			Size = 10;
-			InitCell();
-		}
 
 		/// <summary>
-		///     Initialize new cell
+		/// Constructor 
+		///     Initialize new cell with border size
 		/// </summary>
-		/// <param name="columnNumber">Column number of this cell</param>
-		/// <param name="rowNumber">Row number of this cell</param>
-		/// <param name="size">size of cell</param>
-		public Cell(int columnNumber, int rowNumber, int size)
+		/// <param name="columnNumber">cell column number (0 indexed)</param>
+		/// <param name="rowNumber">cell row number (0 indexed)</param>
+		/// <param name="size">cell size</param>
+		/// <param name="lineWidth">border width</param>
+		/// <param name="cor">cell color</param>
+		public Cell(int columnNumber, int rowNumber, int size, int lineWidth, Color cor)
 		{
 			ColumnNumber = columnNumber;
 			RowNumber = rowNumber;
 			Size = size;
-			Position = new Vector2f(columnNumber * size, rowNumber * size);
+			_lineWidth = lineWidth;
+			_baseColor = cor;
 			InitCell();
 		}
+
+
+		/*
+		 *  ----------------------------- Methods ---------------------------
+		 */
 
 		/// <summary>
-		///     Initialize new cell with bordersize
+		/// 	Initializes the position, shape, and borders of the cell.
+		/// 		
 		/// </summary>
-		/// <param name="columnNumber"></param>
-		/// <param name="rowNumber"></param>
-		/// <param name="cellDto"></param>
-		public Cell(int columnNumber, int rowNumber, CellDto cellDto)
-		{
-			ColumnNumber = columnNumber;
-			RowNumber = rowNumber;
-			Size = cellDto.Size;
-			_lineWidth = cellDto.BorderSize;
-			InitCell();
-		}
-
 		private void InitCell()
 		{
-			Position = new Vector2f(ColumnNumber * Size, RowNumber * Size);
+			_position = new Vector2f(ColumnNumber * Size, RowNumber * Size);
 			//create cell shape
 			_cellShape = new RectangleShape(new Vector2f(Size, Size))
 			{
 				FillColor = _baseColor,
-				Position = Position
+				Position = _position
 			};
 
 			//add borders to dictionary
 			_borderDict.Add("topSide",
-				new Wall(new Vector2f(Size, _lineWidth), new Vector2f(Position.X, Position.Y), _linesColor));
+				new Wall(new Vector2f(Size, _lineWidth), new Vector2f(_position.X, _position.Y), _linesColor));
 			_borderDict.Add("rightSide",
-				new Wall(new Vector2f(_lineWidth, Size), new Vector2f(Position.X + Size - _lineWidth, Position.Y),
+				new Wall(new Vector2f(_lineWidth, Size), new Vector2f(_position.X + Size - _lineWidth, _position.Y),
 					_linesColor));
 			_borderDict.Add("bottomSide",
-				new Wall(new Vector2f(Size, _lineWidth), new Vector2f(Position.X, Position.Y + Size - _lineWidth),
+				new Wall(new Vector2f(Size, _lineWidth), new Vector2f(_position.X, _position.Y + Size - _lineWidth),
 					_linesColor));
 			_borderDict.Add("leftSide",
-				new Wall(new Vector2f(_lineWidth, Size), new Vector2f(Position.X, Position.Y), _linesColor));
+				new Wall(new Vector2f(_lineWidth, Size), new Vector2f(_position.X, _position.Y), _linesColor));
 		}
 
 		/// <summary>
-		///     Method to render cell to window 
+		///     Method to render the cell to window 
 		/// </summary>
 		/// <param name="window"></param>
 		public void RenderCell(RenderWindow window)
 		{
 			//change color
-			if (Current)
-			    _cellShape.FillColor = _currentColor;
-			else
-				_cellShape.FillColor = _baseColor;
-			
+			_cellShape.FillColor = Current ? _currentColor : _baseColor;
+
 			window.Draw(_cellShape);
 			//display walls
 			foreach (var obj in _borderDict.Where(line => line.Value.IsVisible))
 				window.Draw(obj.Value.RecWall);
 		}
 
-		//array of walls to remove
+		/// <summary>
+		/// 	takes an array of wall sides that can be removed
+		/// </summary>
+		/// <param name="arr">array of walls to be removed</param>
 		public void RemoveWalls(IEnumerable<int> arr)
 		{
 			RemoveWalls(DecodeWalls(arr));
 		}
 
-		//int of wall to remove (1-4)
+		/// <summary>
+		/// 	takes an int describing which wall number to remove
+		/// </summary>
+		/// <param name="x">wall number to be removed</param>
 		public void RemoveWalls(int x)
 		{
 			//didnt want to make another DecodeWalls method so I 'cast' var x into an array LMAO
+
 			RemoveWalls(DecodeWalls(new int[] {x}));
 		}
 
+		/// <summary>
+		///    Actually removes the walls
+		/// </summary>
+		/// <param name="arr"></param>
 		public void RemoveWalls(IEnumerable<string> arr)
 		{
 			foreach (var val in arr)
@@ -142,8 +130,11 @@ namespace MazeGen
 		}
 
 
-		//stupid fix to decode an array
-		private static List<String> DecodeWalls(IEnumerable<int> x)
+		/// <summary>
+		///     Decodes ints into wall sides 
+		/// </summary>
+		/// <param name="x"></param>
+		private static IEnumerable<string> DecodeWalls(IEnumerable<int> x)
 		{
 			var decodedList = new List<string>();
 
@@ -167,18 +158,41 @@ namespace MazeGen
 			return decodedList;
 		}
 
+		/// <summary>
+		///     Removes the opposite wall
+		/// </summary>
+		/// <param name="wall"></param>
 		public void RemoveOpposite(int wall)
 		{
 			switch (wall)
 			{
-				case 0: RemoveWalls(2);
+				case 0:
+					RemoveWalls(2);
 					break;
-				case 1:RemoveWalls(3);
+				case 1:
+					RemoveWalls(3);
 					break;
-				case 2:RemoveWalls(0);
+				case 2:
+					RemoveWalls(0);
 					break;
-				case 3: RemoveWalls(1);
+				case 3:
+					RemoveWalls(1);
 					break;
+			}
+		}
+
+		/// <summary>
+		/// 	Wall class holds rectangle of wall and visible bool
+		/// </summary>
+		private class Wall
+		{
+			public bool IsVisible { get; set; }
+			public RectangleShape RecWall { get; set; }
+
+			public Wall(Vector2f size, Vector2f position, Color cor)
+			{
+				IsVisible = true;
+				RecWall = new RectangleShape(size) {FillColor = cor, Position = position};
 			}
 		}
 	}
